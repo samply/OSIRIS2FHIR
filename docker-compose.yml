@@ -1,0 +1,8 @@
+services:
+  gr_osiris2fhir:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # - FHIR_BASE_URL=http://dein-fhir-server/fhir
+      - PYTHONUNBUFFERED=1
