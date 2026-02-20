@@ -4,7 +4,7 @@ WORKDIR /gr_osiris2fhir
 
 RUN pip install fastapi uvicorn
 
-COPY main.py ./
+COPY main.py etl.py transformation.py ./
 
 EXPOSE 8080
 
