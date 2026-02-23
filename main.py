@@ -20,5 +20,6 @@ async def importer_import(request: Request):
     return JSONResponse(
         {
             "status": "ok",
+            "result": result
         }
     )

@@ -3,11 +3,11 @@ from transformation import run_transformation
 
 def run_etl(input):
     fhir_xml  = run_transformation(input)
-    load(fhir_xml)
+    return fhir_xml
 
 
 def load(fhir_xml):
-    print(fhir_xml)
+    print("fhir_xml")
 
     # fhir_base_url = os.environ.get("FHIR_BASE_URL", "").rstrip("/")
     # if not fhir_base_url:
