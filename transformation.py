@@ -59,11 +59,11 @@ def run_transformation(input):
         tnms = diagnosis.get("tnmEvent") or {}
         for tnm in tnms:
             tnm_date = tnm.get("TODO")
-            uicc_stage = tnm.get("TODO")
             tnm_prefix = tnm.get("tnmType")
             tnm_t = tnm.get("tValue")
             tnm_n = tnm.get("nValue")
             tnm_m = tnm.get("mValue")
+            uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)#tnm.get("TODO")
             obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
             bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
         
@@ -91,3 +91,20 @@ def map_atc_to_therapy(atc):
     if a.startswith(("L01E","L01XX")): return "ZS"
     if a.startswith("L01"): return "CH"
     return "SO"
+
+def uicc_heuristic_stage(t, n, m):
+    t=(t or "").upper(); n=(n or "").upper(); m=(m or "").upper()
+
+    if m in ("M1","M1A","M1B","M1C"): return "IV"
+    if "X" in (t+n+m) or not (t and n and m): return "X"
+
+    if t in ("TIS",): return "0"
+
+    if n in ("N3","N2"): return "III"
+    if n == "N1": return "III" if t in ("T3","T4") else "II"
+
+    if t in ("T4","T3"): return "II"
+    if t in ("T2",): return "II"
+    if t in ("T1","T0"): return "I"
+
+    return "X"
