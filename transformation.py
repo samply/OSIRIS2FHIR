@@ -80,8 +80,8 @@ def run_transformation(input):
         med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
         med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
         bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
-        print((med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
     
+    bundle.append("</Bundle>")
     return '\n'.join(bundle)
 
 def map_atc_to_therapy(atc):

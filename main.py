@@ -15,11 +15,5 @@ def health():
 async def importer_import(request: Request):
     input = await request.json()
 
-    result = run_etl(input)
-
-    return JSONResponse(
-        {
-            "status": "ok",
-            "result": result
-        }
-    )
+    response = run_etl(input)
+    return response
