@@ -29,7 +29,8 @@ def run_transformation(input):
     patient_identifier = body.get("patientId")
     patient_id=hash_value(patient_identifier)
     birth_date = get_valid_date(body.get("birthdateYear"),body.get("birthdateMonth"))
-    biologicalSex = body.get("biologicalSex")
+    biologicalSex = (body.get("biologicalSex") or "unknown").strip().lower()
+    biologicalSex = biologicalSex if biologicalSex in ("male", "female", "unknown") else "unknown"
     bundle.append(get_Patient(patient_id,patient_identifier,birth_date,biologicalSex))
 
     ###Vitalstatus
