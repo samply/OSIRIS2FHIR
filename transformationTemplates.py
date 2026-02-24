@@ -190,7 +190,44 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_
         </entry>'''
     )
 
-def get_Observation_Gene(obs_id,patient_id,specimen_id,mutation_type,gene_name):
+def get_Observation_Lab_Marker(obs_id,patient_id,specimen_id,biomarker,biomarker_status,gene_name):
+    return (f'''
+        <entry>
+            <fullUrl value="PSCC/Observation/{obs_id}-lab"/>
+            <resource>
+                <Observation>
+                    <id value="{obs_id}-lab"/>
+                    <code>
+                        <coding>
+                            <system value="http://terminology.hl7.org/CodeSystem/observation-category"/>
+                            <code value="laboratory"/>
+                        </coding>
+                    </code>
+                    <subject>
+                        <reference value="Patient/{patient_id}"/>
+                    </subject>
+                    <effectiveDateTime value="{date}"/>
+                    <specimen>
+                        <reference value="{specimen_id}"/>
+                    </specimen>
+                    <valueQuantity>TODO
+                        <value value="{unit_value}"/>
+                        <system value="http://unitsofmeasure.org"/>
+                        <code value="{unit}"/>
+                    </valueQuantity>
+                    <component>
+                        TODO
+                    </component>
+                </Observation>
+            </resource>
+            <request>
+                <method value="PUT"/>
+                <url value="Observation/{obs_id}-lab"/>
+            </request>
+        </entry>'''
+    )
+
+def get_Observation_Gene_Marker(obs_id,patient_id,specimen_id,mutation_type,gene_name):
     return (f'''
         <entry>
             <fullUrl value="PSCC/Observation/{obs_id}-gen"/>
@@ -211,7 +248,7 @@ def get_Observation_Gene(obs_id,patient_id,specimen_id,mutation_type,gene_name):
                     </specimen>
                     <valueCodeableConcept>
                         <coding>
-                            <system value="http://itcc.dkfz.de/fhir/itcc/CodeSystem/MutationTypeCS"/>
+                            <system value="http://pscc.dkfz.de/fhir/pscc/CodeSystem/MutationTypeCS"/>
                             <code value="{mutation_type}"/>
                         </coding>
                     </valueCodeableConcept>
@@ -238,29 +275,41 @@ def get_Observation_Gene(obs_id,patient_id,specimen_id,mutation_type,gene_name):
         </entry>'''
     )
 
-def get_MedicationStatement(med_id,med_therapy,patient_id,med_date,med_date_end):
+def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end):
+    period = period_helper(med_date, med_date_end)
+    condition = ""
+    if condition_id:
+        condition = f'''
+                    <reasonReference>
+                        <reference value="Condition/{condition_id}"/>
+                    </reasonReference>'''
+    atcText=""
+    if atc_text:
+        atcText = f'''<text value="{atc_text}"/>'''
+    atc=""
+    if atc_code:
+        atc= f'''
+                    <medicationCodeableConcept>
+                        <coding>
+                            <system value="http://fhir.de/CodeSystem/bfarm/atc"/>
+                            <code value="{atc_code}"/>
+                        </coding>{atcText}
+                    </medicationCodeableConcept>'''
     return (f'''
         <entry>
             <fullUrl value="PSCC/MedicationStatement/{med_id}"/>
             <resource>
                 <MedicationStatement>
                     <id value="{med_id}"/>
-                    <meta>
-                        <profile value="TODO"/>
-                    </meta>
                     <category>
                         <coding>
-                            <system value="http://pscc.org/fhir/TODO"/>
+                            <system value="http://pscc.org/fhir/therapy"/>
                             <code value="{med_therapy}"/>
                         </coding>
-                    </category>
+                    </category>{atc}
                     <subject>
                         <reference value="Patient/{patient_id}"/>
-                    </subject>
-                    <effectivePeriod>
-                        <start value="{med_date}"/>
-                        <end value="{med_date_end}"/>
-                    </effectivePeriod>
+                    </subject>{period}{condition}
                 </MedicationStatement>
             </resource>
             <request>
@@ -344,6 +393,21 @@ def date_helper(date_in):
     if date_in:
         date=f'<effectiveDateTime value="{date_in}"/>'
     return date
+
+def period_helper(start_in, end_in):
+    start=""
+    if start_in:
+        start=f'<start value="{start_in}"/>'
+    end=""
+    if end_in:
+        end=f'<end value="{end_in}"/>'
+    start_end=""
+    if start or end:
+        start_end=f'''
+                    <effectivePeriod>
+                        {start}{end}
+                    </effectivePeriod>'''
+    return start_end
 
 def tnm_helper(tnm_in, prefix, loinc):
     tnm=""

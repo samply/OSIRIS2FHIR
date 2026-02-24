@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 from hashlib import sha256
-from transformationTemplates import get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC
+from transformationTemplates import get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
 
 def hash_value(value):
     return sha256(value.encode('utf-8')).hexdigest()[:15]
@@ -42,16 +42,17 @@ def run_transformation(input):
     ###Condition
     diagnoses = body.get("primaryCancer") or {}
     #iterate through all conditions
+    condition_id="" #TODO find a way to link other children to condition
     for diagnosis in diagnoses:
-        diagnosis_date=get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"))
-        diagnosis_icd10=diagnosis.get("topographyCode")
-        diagnosis_icdo3=diagnosis.get("topographyGroup")
-        condition_id=hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
+        diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"))
+        diagnosis_icd10 = diagnosis.get("topographyCode")
+        diagnosis_icdo3 = diagnosis.get("topographyGroup")
+        condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
         bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date))#TODO trow error on missing element
 
         ###Histology
-        histology_value=diagnosis.get("morphologyCode")
-        obs_id=hash_value(str(patient_id)+str(condition_id)+str(histology_value))
+        histology_value = diagnosis.get("morphologyCode")
+        obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
         bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))#TODO trow error on missing element
 
         ###TNM / UICC
@@ -65,5 +66,28 @@ def run_transformation(input):
             tnm_m = tnm.get("mValue")
             obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
             bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
+        
+    #Biomarker TODO
+    #markers = diagnosis.get("tnmEvent") or {}
+
+    #Medication
+    medications = body.get("medication") or {}
+    for medication in medications:
+        atc_code = medication.get("moleculeCode")
+        atc_text = medication.get("moleculeName")
+        med_therapy = map_atc_to_therapy(atc_code)
+        med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"))
+        med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
+        med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
+        bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
+        print((med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
     
     return '\n'.join(bundle)
+
+def map_atc_to_therapy(atc):
+    a = (atc or "").upper()
+    if a.startswith(("H","L02","G03")): return "HO"
+    if a.startswith(("L01XC","L01X","L03","L04")): return "IM"
+    if a.startswith(("L01E","L01XX")): return "ZS"
+    if a.startswith("L01"): return "CH"
+    return "SO"
