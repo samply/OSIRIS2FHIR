@@ -23,7 +23,7 @@ def get_Patient(patient_id,patient_identifier,birth_date,biologicalSex):
     )
 
 def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date):
-    effective=""
+    effective = ""
     if vitalstatus_date:
         effective = f'\n                    <effectiveDateTime value="{vitalstatus_date}"/>'
     conditional_update=""
@@ -63,6 +63,15 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
     )
 
 def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date):
+    bodysite = ""
+    if diagnosis_icdo3:
+        bodysite=f'''
+                    <bodySite>
+                        <coding>
+                            <system value="http://hl7.org/fhir/sid/icd-O3-topography"/>
+                            <code value="{diagnosis_icdo3}"/>
+                        </coding>
+                    </bodySite>'''
     return (f'''
         <entry>
             <fullUrl value="PSCC/Condition/{condition_id}"/>
@@ -77,21 +86,13 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
                             <system value="http://hl7.org/fhir/sid/icd-10"/>
                             <code value="{diagnosis_icd10}"/>
                         </coding>
-                    </code>
-                    <bodySite>
-                        <coding>
-                            <system value="http://hl7.org/fhir/sid/icd-O3-topography"/>
-                            <code value="{diagnosis_icdo3}"/>
-                        </coding>
-                    </bodySite>
+                    </code>{bodysite}
                     <subject>
                         <reference value="Patient/{patient_id}"/>
                     </subject>
                     <onsetDateTime>
                         <value value="{diagnosis_date}"/>
-                        '''#<unit value="Jahre"/>
-                        #<system value="http://unitsofmeasure.org/"/>
-                    +f'''</onsetDateTime>
+                    </onsetDateTime>
                 </Condition>
             </resource>
             <request>
@@ -100,8 +101,65 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
             </request>
         </entry>'''
     )
-        
-def get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage):
+
+def get_Observation_Histology(obs_id,patient_id,histology_date,histology_value):
+    date = date_helper(histology_date)
+    return (f'''
+        <entry>
+            <fullUrl value="PSCC/Observation/{obs_id}-histology"/>
+            <resource>
+                <Observation>
+                    <id value="{obs_id}-histology"/>
+                    <meta>
+                        <profile value="https://simplifier.net/pscc/StructureDefinition/Histologie"/>
+                    </meta>
+                    <code>
+                        <coding>
+                            <system value="http://loinc.org"/>
+                            <code value="59847-4"/>
+                        </coding>
+                    </code>
+                    <subject>
+                        <reference value="Patient/{patient_id}"/>
+                    </subject>{date}
+                    <valueCodeableConcept>
+                        <coding>
+                            <system value="urn:oid:2.16.840.1.113883.6.43.1"/>
+                            <code value="{histology_value}"/>
+                        </coding>
+                    </valueCodeableConcept>
+                </Observation>
+            </resource>
+            <request>
+                <method value="PUT"/>
+                <url value="Observation/{obs_id}-histology"/>
+            </request>
+        </entry>''')
+
+def get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m):
+    date = date_helper(tnm_date)
+    uicc = ""
+    if uicc_stage:
+        uicc = f'''
+                    <valueCodeableConcept>
+                        <coding>
+                            <system value="https://simplifier.net/PSCC/tnmstagevs"/>
+                            <code value="{uicc_stage}"/>
+                        </coding>
+                    </valueCodeableConcept>'''
+    prefix = ""
+    if tnm_prefix:
+        prefix = f'''
+                        <extension url="http://pscc.org/fhir/StructureDefinition/pscc-Extension-TNMcpuPrefix">
+                            <valueCodeableConcept>
+                                <coding>
+                                    <code value="{tnm_prefix}" />
+                                </coding>
+                            </valueCodeableConcept>
+                        </extension>'''
+    t=tnm_helper(tnm_t, prefix, "21905-5")
+    n=tnm_helper(tnm_n, prefix, "201906-3")
+    m=tnm_helper(tnm_m, prefix, "21907-1")
     return (f'''
         <entry>
             <fullUrl value="PSCC/Observation/{obs_id}-tnm"/>
@@ -122,14 +180,7 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage):
                     </subject>
                     <focus>
                         <reference value="Condition/{condition_id}"/>
-                    </focus>
-                    <effectiveDateTime value="{tnm_date}"/>
-                    <valueCodeableConcept>
-                        <coding>
-                            <system value="https://simplifier.net/PSCC/tnmstagevs"/>
-                            <code value="{uicc_stage}"/>
-                        </coding>
-                    </valueCodeableConcept>
+                    </focus>{date}{uicc}{t}{n}{m}
                 </Observation>
             </resource>
             <request>
@@ -138,44 +189,6 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage):
             </request>
         </entry>'''
     )
-
-def get_Observation_Histology(obs_id,patient_id,histology_date,histology_value,specimen_id):
-    return (f'''
-        <entry>
-            <fullUrl value="PSCC/Observation/{obs_id}-histology"/>
-            <resource>
-                <Observation>
-                    <id value="{obs_id}-histology"/>
-                    <meta>
-                        <profile value="TODO"/>
-                    </meta>
-                    <code>
-                        <coding>
-                            <system value="http://loinc.org"/>
-                            <code value="59847-4"/>
-                        </coding>
-                    </code>
-                    <subject>
-                        <reference value="Patient/{patient_id}"/>
-                    </subject>
-                    <effectiveDateTime value="{histology_date}"/>
-                    <valueCodeableConcept>
-                        <coding>
-                            <system value="urn:oid:2.16.840.1.113883.6.43.1"/>
-                            <code value="{histology_value}"/>
-                        </coding>
-                    </valueCodeableConcept>
-                    <specimen>
-                        <reference value="{specimen_id}"/>
-                    </specimen>
-                </Observation>
-            </resource>
-            <request>
-                <method value="PUT"/>
-                <url value="Observation/{obs_id}-histology"/>
-            </request>
-        </entry>''')
-
 
 def get_Observation_Gene(obs_id,patient_id,specimen_id,mutation_type,gene_name):
     return (f'''
@@ -323,3 +336,30 @@ def get_Specimen(specimen_id,patient_id,specimen_type,specimen_date):
             </request>
         </entry>'''
     )
+
+
+#########helper
+def date_helper(date_in):
+    date=""
+    if date_in:
+        date=f'<effectiveDateTime value="{date_in}"/>'
+    return date
+
+def tnm_helper(tnm_in, prefix, loinc):
+    tnm=""
+    if tnm_in:
+        tnm=f'''<component>{prefix}
+                        <code>
+                            <coding>
+                                <system value="http://loinc.org" />
+                                <code value="{loinc}" />
+                            </coding>
+                        </code>
+                        <valueCodeableConcept>
+                            <coding>
+                                <system value="http://pscc.org/fhir/CodeSystem/TNMTCS" />
+                                <code value="{tnm_in}" />
+                            </coding>
+                        </valueCodeableConcept>
+                    </component>'''
+    return tnm
