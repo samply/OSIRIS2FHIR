@@ -20,10 +20,13 @@ def get_valid_date(year=None, month=""):
     m = int(month)
     return f"{y}-{m:02d}" if 1 <= m <= 12 else str(y)
 
-def run_transformation(input):
-    body = input.get("BODY", {})
+def run_transformation(input: dict):
+    if not isinstance(input, dict):
+        raise ValueError("input must be a dict")
+    body = input.get("BODY") if isinstance(input.get("BODY"), dict) else input
+
     bundle_id = str(uuid.uuid4())
-    bundle=[f'<Bundle xmlns="http://hl7.org/fhir">\n\t<id value="{bundle_id}"/>\n\t<type value="transaction"/>']
+    bundle=[f'<Bundle xmlns="http://hl7.org/fhir">\n\t<id value="{bundle_id}"/>\n\t<type value="batch"/>']
     
     ###Patient    
     patient_identifier = body.get("patientId")
@@ -72,15 +75,15 @@ def run_transformation(input):
     #markers = diagnosis.get("tnmEvent") or {}
 
     #Medication
-    medications = body.get("medication") or {}
-    for medication in medications:
-        atc_code = medication.get("moleculeCode")
-        atc_text = medication.get("moleculeName")
-        med_therapy = map_atc_to_therapy(atc_code)
-        med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"))
-        med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
-        med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
-        bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
+    #medications = body.get("medication") or {}
+    #for medication in medications:
+        #atc_code = medication.get("moleculeCode")
+        #atc_text = medication.get("moleculeName")
+        #med_therapy = map_atc_to_therapy(atc_code)
+        #med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"))
+        #med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
+        #med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
+        #bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
     
     bundle.append("</Bundle>")
     return '\n'.join(bundle)
