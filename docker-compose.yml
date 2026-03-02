@@ -1,5 +1,13 @@
 services:
-  gr_osiris2fhir:
+  osiris2fhir:
     build: .
     ports:
       - "8080:8080"
+  blaze:
+    image: docker.verbis.dkfz.de/cache/samply/blaze
+    environment:
+      ENFORCE_REFERENTIAL_INTEGRITY: "false"
+    volumes:
+      - "blaze-osiris2fhir:/app/data"
+volumes:
+  blaze-osiris2fhir:
