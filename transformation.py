@@ -6,84 +6,70 @@ from transformationTemplates import get_Patient, get_Observation_Vitalstatus, ge
 def hash_value(value):
     return sha256(value.encode('utf-8')).hexdigest()[:15]
 
-def get_valid_date(year=None, month=""):
-    if year in (None, ""):
-        return ""
+def get_valid_date(year=None, month=None, day=None):
+    year = f"{int(year):04d}" if year not in (None, "") else None
+    return None if year is None else year + (f"-{int(month):02d}" if month not in (None, "") else "") + (f"-{int(day):02d}" if month not in (None, "") and day not in (None, "") else "")
 
-    y = int(year)
-    if not (1900 <= y <= date.today().year):
-        return ""
-
-    if month in (None, ""):
-        return str(y)
-
-    m = int(month)
-    return f"{y}-{m:02d}" if 1 <= m <= 12 else str(y)
-
-def run_transformation(input: dict):
-    if not isinstance(input, dict):
-        raise ValueError("input must be a dict")
-    body = input.get("BODY") if isinstance(input.get("BODY"), dict) else input
-
+def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
     bundle=[f'<Bundle xmlns="http://hl7.org/fhir">\n\t<id value="{bundle_id}"/>\n\t<type value="batch"/>']
-    
-    ###Patient    
-    patient_identifier = body.get("patientId")
-    patient_id=hash_value(patient_identifier)
-    birth_date = get_valid_date(body.get("birthdateYear"),body.get("birthdateMonth"))
-    biologicalSex = (body.get("biologicalSex") or "unknown").strip().lower()
-    biologicalSex = biologicalSex if biologicalSex in ("male", "female", "unknown") else "unknown"
-    bundle.append(get_Patient(patient_id,patient_identifier,birth_date,biologicalSex))
+    for input in input_list:
+        ###Patient    
+        patient_identifier = input.get("patientId")
+        patient_id=hash_value(patient_identifier)
+        birth_date = get_valid_date(input.get("birthdateYear"),input.get("birthdateMonth"),input.get("birthdateDay"))
+        biologicalSex = (input.get("biologicalSex") or "unknown").strip().lower()
+        biologicalSex = biologicalSex if biologicalSex in ("male", "female", "unknown") else "unknown"
+        bundle.append(get_Patient(patient_id,patient_identifier,birth_date,biologicalSex))
 
-    ###Vitalstatus
-    latest_news = body.get("latestNews") or {}
-    obs_id=hash_value(patient_id)
-    vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
-    vitalstatus_date = get_valid_date(latest_news.get("vitalStatusUpdateDateYear"),latest_news.get("vitalStatusUpdateDateMonth"))
-    bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))#TODO trow error on missing element
+        ###Vitalstatus
+        latest_news = input.get("latestNews") or {}
+        obs_id=hash_value(patient_id)
+        vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
+        vitalstatus_date = get_valid_date(latest_news.get("vitalStatusUpdateDateYear"),latest_news.get("vitalStatusUpdateDateMonth"))
+        bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))#TODO trow error on missing element
 
-    ###Condition
-    diagnoses = body.get("primaryCancer") or {}
-    #iterate through all conditions
-    condition_id="" #TODO find a way to link other children to condition
-    for diagnosis in diagnoses:
-        diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"))
-        diagnosis_icd10 = diagnosis.get("topographyCode")
-        diagnosis_icdo3 = diagnosis.get("topographyGroup")
-        condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
-        bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date))#TODO trow error on missing element
+        ###Condition
+        diagnoses = input.get("primaryCancer") or {}
+        #iterate through all conditions
+        condition_id="" #TODO find a way to link other children to condition
+        for diagnosis in diagnoses:
+            diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"))
+            diagnosis_icd10 = diagnosis.get("topographyCode")
+            diagnosis_icdo3 = diagnosis.get("topographyGroup")
+            condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
+            bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date))#TODO trow error on missing element
 
-        ###Histology
-        histology_value = diagnosis.get("morphologyCode")
-        obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
-        bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))#TODO trow error on missing element
+            ###Histology
+            histology_value = diagnosis.get("morphologyCode")
+            obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
+            bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))#TODO trow error on missing element
 
-        ###TNM / UICC
-        tnms = diagnosis.get("tnmEvent") or {}
-        for tnm in tnms:
-            tnm_date = tnm.get("TODO")
-            tnm_prefix = tnm.get("tnmType")
-            tnm_t = tnm.get("tValue")
-            tnm_n = tnm.get("nValue")
-            tnm_m = tnm.get("mValue")
-            uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)#tnm.get("TODO")
-            obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
-            bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
-        
-    #Biomarker TODO
-    #markers = diagnosis.get("tnmEvent") or {}
+            ###TNM / UICC
+            tnms = diagnosis.get("tnmEvent") or {}
+            for tnm in tnms:
+                tnm_date = tnm.get("TODO")
+                tnm_prefix = tnm.get("tnmType")
+                tnm_t = tnm.get("tValue")
+                tnm_n = tnm.get("nValue")
+                tnm_m = tnm.get("mValue")
+                uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)#tnm.get("TODO")
+                obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
+                bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
+            
+        #Biomarker TODO
+        #markers = diagnosis.get("tnmEvent") or {}
 
-    #Medication
-    #medications = body.get("medication") or {}
-    #for medication in medications:
-        #atc_code = medication.get("moleculeCode")
-        #atc_text = medication.get("moleculeName")
-        #med_therapy = map_atc_to_therapy(atc_code)
-        #med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"))
-        #med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
-        #med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
-        #bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
+        #Medication
+        #medications = input.get("medication") or {}
+        #for medication in medications:
+            #atc_code = medication.get("moleculeCode")
+            #atc_text = medication.get("moleculeName")
+            #med_therapy = map_atc_to_therapy(atc_code)
+            #med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"))
+            #med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
+            #med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
+            #bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
     
     bundle.append("</Bundle>")
     return '\n'.join(bundle)

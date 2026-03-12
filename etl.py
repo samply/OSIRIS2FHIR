@@ -3,9 +3,26 @@ import urllib.request
 import urllib.error
 
 def run_etl(input):
-    fhir_xml  = run_transformation(input)
+    content = extract(input)
+    fhir_xml  = run_transformation(content)
     return load(fhir_xml)
 
+def extract(input):
+    def unwrap(item):
+        if not isinstance(item, dict):
+            raise ValueError("patient item must be a OSIRIS-RWD JSON export")
+        body = item.get("BODY")
+        return body if isinstance(body, dict) else item
+
+    if isinstance(input, dict):
+        patients = [unwrap(input)]
+    elif isinstance(input, list):
+        patients = [unwrap(item) for item in input]
+    else:
+        raise ValueError("input must be a OSIRIS-RWD JSON export (single patient)")
+
+    print(f"extract: {len(patients)} patient(s) read")
+    return patients
 
 def load(fhir_xml: str) -> dict:
     url = "http://blaze:8080/fhir"
