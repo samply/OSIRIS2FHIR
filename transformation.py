@@ -3,13 +3,6 @@ from datetime import date
 from hashlib import sha256
 from transformationTemplates import get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
 
-def hash_value(value):
-    return sha256(value.encode('utf-8')).hexdigest()[:15]
-
-def get_valid_date(year=None, month=None, day=None):
-    year = f"{int(year):04d}" if year not in (None, "") else None
-    return None if year is None else year + (f"-{int(month):02d}" if month not in (None, "") else "") + (f"-{int(day):02d}" if month not in (None, "") and day not in (None, "") else "")
-
 def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
     bundle=[f'<Bundle xmlns="http://hl7.org/fhir">\n\t<id value="{bundle_id}"/>\n\t<type value="batch"/>']
@@ -24,10 +17,15 @@ def run_transformation(input_list):
 
         ###Vitalstatus
         latest_news = input.get("latestNews") or {}
-        obs_id=hash_value(patient_id)
-        vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
-        vitalstatus_date = get_valid_date(latest_news.get("vitalStatusUpdateDateYear"),latest_news.get("vitalStatusUpdateDateMonth"))
-        bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))#TODO trow error on missing element
+        vitalstatus = (latest_news.get("vitalStatus") or "").strip().lower()
+        if vitalstatus != "":
+            vitalstatus_value = None if not vital_raw else ("deceased" if vital_raw == "dead" else "alive")
+            obs_id=hash_value(patient_id)
+            vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
+            vitalstatus_date = latest_date_helper(latest_news)
+            bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))#TODO throw error on missing element´
+        else:
+
 
         ###Condition
         diagnoses = input.get("primaryCancer") or {}
@@ -38,12 +36,12 @@ def run_transformation(input_list):
             diagnosis_icd10 = diagnosis.get("topographyCode")
             diagnosis_icdo3 = diagnosis.get("topographyGroup")
             condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
-            bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date))#TODO trow error on missing element
+            bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date))#TODO throw error on missing element
 
             ###Histology
             histology_value = diagnosis.get("morphologyCode")
             obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
-            bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))#TODO trow error on missing element
+            bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))#TODO throw error on missing element
 
             ###TNM / UICC
             tnms = diagnosis.get("tnmEvent") or {}
@@ -73,6 +71,39 @@ def run_transformation(input_list):
     
     bundle.append("</Bundle>")
     return '\n'.join(bundle)
+
+def hash_value(value):
+    return sha256(value.encode('utf-8')).hexdigest()[:15]
+
+def get_valid_date(year=None, month=None, day=None):
+    year = f"{int(year):04d}" if year not in (None, "") else None
+    return None if year is None else year + (f"-{int(month):02d}" if month not in (None, "") else "") + (f"-{int(day):02d}" if month not in (None, "") and day not in (None, "") else "")
+
+def get_latest_date(dates):
+    return max((d for d in dates if d), default=None)
+
+def latest_date_helper(latest_news):
+    date1 = get_valid_date(
+        latest_news.get("vitalStatusUpdateDateYear"),
+        latest_news.get("vitalStatusUpdateDateMonth"),
+        latest_news.get("vitalStatusUpdateDateDay"),
+    )
+    date2 = get_valid_date(
+        latest_news.get("latestVisitDateYear"),
+        latest_news.get("latestVisitDateMonth"),
+        latest_news.get("latestVisitDateDay"),
+    )
+    date3 = get_valid_date(
+        latest_news.get("lastContactDateYear"),
+        latest_news.get("lastContactDateMonth"),
+        latest_news.get("lastContactDateDay"),
+    )
+    date4 = get_valid_date(
+        latest_news.get("deathDateYear"),
+        latest_news.get("deathDateMonth"),
+        latest_news.get("deathDateDay"),
+    )
+    return get_latest_date([date1, date2, date3, date4])
 
 def map_atc_to_therapy(atc):
     a = (atc or "").upper()
