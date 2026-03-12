@@ -31,12 +31,12 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
         conditional_update='\n        <ifNoneMatch value="*"/>'
     return (f'''
         <entry>
-            <fullUrl value="PSCC/Observation/{obs_id}-vital"/>
+            <fullUrl value="PSCC/Observation/{obs_id}"/>
             <resource>
                 <Observation>
-                    <id value="{obs_id}-vital"/>
+                    <id value="{obs_id}"/>
                     <meta>
-                        <profile value="https://simplifier.net/PSCC-Test/StructureDefinition-PSCC-VitalStatus"/>
+                        <profile value="https://simplifier.net/PSCC/StructureDefinition-PSCC-VitalStatus"/>
                     </meta>
                     <code>
                         <coding>
@@ -57,7 +57,7 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
             </resource>
             <request>
                 <method value="PUT"/>{conditional_update}
-                <url value="Observation/{obs_id}-vital"/>
+                <url value="Observation/{obs_id}"/>
             </request>
         </entry>'''
     )
