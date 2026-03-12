@@ -1,6 +1,9 @@
 from transformation import run_transformation
 import urllib.request
 import urllib.error
+import logging
+
+log = logging.getLogger(__name__)
 
 def run_etl(input):
     content = extract(input)
@@ -8,6 +11,7 @@ def run_etl(input):
     return load(fhir_xml)
 
 def extract(input):
+    log.info("extracting OSIRIS-RWD JSON data")
     def unwrap(item):
         if not isinstance(item, dict):
             raise ValueError("patient item must be a OSIRIS-RWD JSON export")
@@ -21,7 +25,7 @@ def extract(input):
     else:
         raise ValueError("input must be a OSIRIS-RWD JSON export (single patient)")
 
-    print(f"extract: {len(patients)} patient(s) read")
+    log.info(f"extracted {len(patients)} patient(s)")
     return patients
 
 def load(fhir_xml: str) -> dict:
@@ -43,13 +47,13 @@ def load(fhir_xml: str) -> dict:
     except urllib.error.HTTPError as exc:
         body_text = exc.read().decode("utf-8", errors="replace")
         headers = dict(exc.headers.items()) if exc.headers else {}
-        print(f"FHIR POST failed: {exc.code} {exc.reason}")
+        log.error(f"FHIR POST failed: {exc.code} {exc.reason}")
         if headers.get("Location"):
-            print(f"Location: {headers['Location']}")
+            log.error(f"Location: {headers['Location']}")
         if body_text:
-            print(body_text)
+            log.error(body_text)
         return {"status": exc.code, "headers": headers, "body": body_text, "error": f"{exc.code} {exc.reason}"}
 
     except urllib.error.URLError as exc:
-        print(f"FHIR POST connection error: {exc.reason}")
+        log.error(f"FHIR POST connection error: {exc.reason}")
         return {"status": None, "headers": {}, "body": "", "error": str(exc.reason)}

@@ -1,12 +1,18 @@
 import uuid
+import logging
 from datetime import date
 from hashlib import sha256
 from transformationTemplates import get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
 
+log = logging.getLogger(__name__)
+
 def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
     bundle=[f'<Bundle xmlns="http://hl7.org/fhir">\n\t<id value="{bundle_id}"/>\n\t<type value="batch"/>']
+    counter=0
     for input in input_list:
+        counter+=1
+        log.info(f"transforming Patient {counter} to fhir bundle")
         ###Patient    
         patient_identifier = input.get("patientId")
         patient_id=hash_value(patient_identifier)
@@ -23,8 +29,10 @@ def run_transformation(input_list):
             obs_id=hash_value(patient_id)
             vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
             vitalstatus_date = latest_date_helper(latest_news)
-            bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))#TODO throw error on missing element´
+            bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))
         else:
+            log.warn(f"Patient {patient_identifier} has no vitalstatus information")
+
 
 
         ###Condition

@@ -4,7 +4,7 @@ WORKDIR /osiris2fhir
 
 RUN pip install fastapi uvicorn datetime
 
-COPY main.py etl.py transformation.py transformationTemplates.py ./
+COPY *.py ./
 
 EXPOSE 8080
 
