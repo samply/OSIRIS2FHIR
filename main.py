@@ -1,6 +1,6 @@
 import logging
 from logging_setup import setup_logging
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from etl import run_etl
 
@@ -19,5 +19,9 @@ def health():
 async def importer_import(request: Request):
     input = await request.json()
 
-    response = run_etl(input)
-    return response
+    try:
+        return run_etl(input)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="internal error")
