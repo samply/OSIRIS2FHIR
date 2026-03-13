@@ -1,10 +1,13 @@
 import uuid
 import logging
+import re
 from datetime import date
 from hashlib import sha256
 from transformationTemplates import get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
 
 log = logging.getLogger(__name__)
+FHIR_DATE_RE = re.compile(r"\d{4}(-\d{2}(-\d{2})?)?$")
+ICD10_RE = re.compile(r"[CD]\d{2}(\.\d)?$")
 
 def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
@@ -18,20 +21,20 @@ def run_transformation(input_list):
         patient_id=hash_value(patient_identifier)
         birth_date = get_valid_date(input.get("birthdateYear"),input.get("birthdateMonth"),input.get("birthdateDay"))
         biologicalSex = (input.get("biologicalSex") or "unknown").strip().lower()
-        biologicalSex = biologicalSex if biologicalSex in ("male", "female", "unknown") else "unknown"
+        biologicalSex = biologicalSex if biologicalSex in ("male", "female") else "unknown"
         bundle.append(get_Patient(patient_id,patient_identifier,birth_date,biologicalSex))
 
         ###Vitalstatus
         latest_news = input.get("latestNews") or {}
         vitalstatus = (latest_news.get("vitalStatus") or "").strip().lower()
-        if vitalstatus != "":
-            vitalstatus_value = None if not vital_raw else ("deceased" if vital_raw == "dead" else "alive")
+        if vitalstatus in ("alive", "dead", "deceased"):
+            vitalstatus_value = "deceased" if vitalstatus != "alive" else "alive"
             obs_id=hash_value(patient_id)
             vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
             vitalstatus_date = latest_date_helper(latest_news)
             bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))
         else:
-            log.warn(f"Patient {patient_identifier} has no vitalstatus information")
+            log.warn(f"Patient {patient_identifier} has no vitalstatus information (vitalStatus)")
 
 
 
@@ -40,28 +43,37 @@ def run_transformation(input_list):
         #iterate through all conditions
         condition_id="" #TODO find a way to link other children to condition
         for diagnosis in diagnoses:
-            diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"))
-            diagnosis_icd10 = diagnosis.get("topographyCode")
-            diagnosis_icdo3 = diagnosis.get("topographyGroup")
+            diagnosis_icdo3 = diagnosis.get("topographyCode")
+            diagnosis_icd10 = diagnosis_icdo3 #TODO replace in next iteration
+            diagnosis_icdo3_text = diagnosis.get("topographyGroup")
+            diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"),diagnosis.get("cancerDiagnosisDateDay"))
             condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
-            bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date))#TODO throw error on missing element
+            if is_fhir_date(diagnosis_date) and is_icd10_code(diagnosis_icd10):
+                log.info(f"everything in condition present {diagnosis_icd10}")
+                bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text))
+            else:
+                log.error(f"Patient {patient_identifier} has incorrect Condition {diagnosis_icdo3} or diagnosis date {diagnosis_date} (topographyCode;cancerDiagnosisDateYear)")
+                raise ValueError(f"ERROR: Patient {patient_identifier} has incorrect Condition {diagnosis_icdo3} or diagnosis date {diagnosis_date} (topographyCode;cancerDiagnosisDateYear)")
+
 
             ###Histology
             histology_value = diagnosis.get("morphologyCode")
             obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
-            bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))#TODO throw error on missing element
+            if histology_value != "":
+                bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))
+            else:
+                log.warn(f"Patient {patient_identifier} has no Histology information (morphologyCode)")
 
             ###TNM / UICC
             tnms = diagnosis.get("tnmEvent") or {}
             for tnm in tnms:
-                tnm_date = tnm.get("TODO")
                 tnm_prefix = tnm.get("tnmType")
                 tnm_t = tnm.get("tValue")
                 tnm_n = tnm.get("nValue")
                 tnm_m = tnm.get("mValue")
-                uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)#tnm.get("TODO")
+                uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)
                 obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
-                bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
+                bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
             
         #Biomarker TODO
         #markers = diagnosis.get("tnmEvent") or {}
@@ -82,6 +94,12 @@ def run_transformation(input_list):
 
 def hash_value(value):
     return sha256(value.encode('utf-8')).hexdigest()[:15]
+
+def is_fhir_date(value: str) -> bool:
+    return bool(value) and bool(FHIR_DATE_RE.fullmatch(value))
+
+def is_icd10_code(value: str) -> bool:
+    return bool(value) and bool(ICD10_RE.fullmatch(value))
 
 def get_valid_date(year=None, month=None, day=None):
     year = f"{int(year):04d}" if year not in (None, "") else None
