@@ -28,7 +28,7 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
         effective = f'\n                    <effectiveDateTime value="{vitalstatus_date}"/>'
     conditional_update=""
     if vitalstatus_value=="alive":
-        conditional_update='\n        <ifNoneMatch value="*"/>'
+        conditional_update='\n                <ifNoneMatch value="*"/>'
     return (f'''
         <entry>
             <fullUrl value="PSCC/Observation/{obs_id}"/>
@@ -62,7 +62,11 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
         </entry>'''
     )
 
-def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date):
+def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text):
+    diagnosis_text = ""
+    if diagnosis_icdo3_text:
+        diagnosis_text=f'''
+                        <text value="{diagnosis_icdo3_text}" />'''
     bodysite = ""
     if diagnosis_icdo3:
         bodysite=f'''
@@ -70,7 +74,7 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
                         <coding>
                             <system value="http://hl7.org/fhir/sid/icd-O3-topography"/>
                             <code value="{diagnosis_icdo3}"/>
-                        </coding>
+                        </coding>{diagnosis_text}
                     </bodySite>'''
     return (f'''
         <entry>
@@ -136,8 +140,8 @@ def get_Observation_Histology(obs_id,patient_id,histology_date,histology_value):
             </request>
         </entry>''')
 
-def get_Observation_UICC(obs_id,patient_id,condition_id,tnm_date,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m):
-    date = date_helper(tnm_date)
+def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m):
+    date = ""#date_helper(tnm_date)
     uicc = ""
     if uicc_stage:
         uicc = f'''
@@ -391,7 +395,8 @@ def get_Specimen(specimen_id,patient_id,specimen_type,specimen_date):
 def date_helper(date_in):
     date=""
     if date_in:
-        date=f'<effectiveDateTime value="{date_in}"/>'
+        date=f'''
+                    <effectiveDateTime value="{date_in}"/>'''
     return date
 
 def period_helper(start_in, end_in):

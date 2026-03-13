@@ -8,13 +8,14 @@ log = logging.getLogger(__name__)
 def run_etl(input):
     content = extract(input)
     fhir_xml  = run_transformation(content)
+    log.debug(f"posting FHIR Bunlde:\n{fhir_xml}")
     return load(fhir_xml)
 
 def extract(input):
     log.info("extracting OSIRIS-RWD JSON data")
     def unwrap(item):
         if not isinstance(item, dict):
-            raise ValueError("patient item must be a OSIRIS-RWD JSON export")
+            raise ValueError("input must be a OSIRIS-RWD JSON export")
         body = item.get("BODY")
         return body if isinstance(body, dict) else item
 
@@ -23,7 +24,7 @@ def extract(input):
     elif isinstance(input, list):
         patients = [unwrap(item) for item in input]
     else:
-        raise ValueError("input must be a OSIRIS-RWD JSON export (single patient)")
+        raise ValueError("input must be a OSIRIS-RWD JSON export")
 
     log.info(f"extracted {len(patients)} patient(s)")
     return patients
@@ -38,6 +39,7 @@ def load(fhir_xml: str) -> dict:
         method="POST",
     )
 
+    log.info("POSTing FHIR Bundle to FHIR endpoint")
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
             status = response.getcode()
