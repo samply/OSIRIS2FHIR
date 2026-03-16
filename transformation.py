@@ -73,7 +73,7 @@ def run_transformation(input_list):
             histology_value = diagnosis.get("morphologyCode")
             obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
             if is_icdo3_morphology(histology_value):
-                bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))
+                bundle.append(get_Observation_Histology(obs_id,patient_id,condition_id,diagnosis_date,histology_value))
             else:
                 log.warn(f'Patient "{patient_identifier}" has incorrect Histology "{histology_value}" (morphologyCode)')
 

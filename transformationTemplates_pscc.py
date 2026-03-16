@@ -106,7 +106,7 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
         </entry>'''
     )
 
-def get_Observation_Histology(obs_id,patient_id,histology_date,histology_value):
+def get_Observation_Histology(obs_id,patient_id,condition_id,histology_date,histology_value):
     date = date_helper(histology_date)
     return (f'''
         <entry>
@@ -125,7 +125,10 @@ def get_Observation_Histology(obs_id,patient_id,histology_date,histology_value):
                     </code>
                     <subject>
                         <reference value="Patient/{patient_id}"/>
-                    </subject>{date}
+                    </subject>
+                    <focus>
+                        <reference value="Condition/{condition_id}" />
+                    </focus>{date}
                     <valueCodeableConcept>
                         <coding>
                             <system value="urn:oid:2.16.840.1.113883.6.43.1"/>
