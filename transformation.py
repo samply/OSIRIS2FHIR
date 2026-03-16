@@ -3,7 +3,18 @@ import logging
 import re
 from datetime import date
 from hashlib import sha256
-from transformationTemplates import get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
+
+PROFILE = os.getenv("FHIR_PROFILE", "pscc").lower()
+if PROFILE == "pscc":
+    from transformationTemplates_pscc import (
+        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
+    )
+elif PROFILE == "cce":
+    from transformationTemplates_cce import (
+        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC
+    )
+else:
+    raise ValueError(f"unknown FHIR_PROFILE: {PROFILE}")
 
 log = logging.getLogger(__name__)
 FHIR_DATE_RE = re.compile(r"\d{4}(-\d{2}(-\d{2})?)?$")

@@ -4,6 +4,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      FHIR_PROFILE: ${PROJECT:-pscc}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
   blaze:
     image: docker.verbis.dkfz.de/cache/samply/blaze
