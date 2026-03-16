@@ -35,9 +35,7 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
             <resource>
                 <Observation>
                     <id value="{obs_id}"/>
-                    <meta>
-                        <profile value="https://simplifier.net/CCE/StructureDefinition-CCE-VitalStatus"/>
-                    </meta>
+                    <status value="final" />
                     <code>
                         <coding>
                             <system value="http://loinc.org"/>
@@ -49,7 +47,7 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
                     </subject>{effective}
                     <valueCodeableConcept>
                         <coding>
-                            <system value="https://simplifier.net/CCE/ValueSet/Vitalstatus"/>
+                            <system value="https://www.cancercoreeurope.eu/fhir/core/CodeSystem/VitalStatusCS"/>
                             <code value="{vitalstatus_value}"/>
                         </coding>
                     </valueCodeableConcept>
@@ -62,7 +60,14 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
         </entry>'''
     )
 
-def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text):
+def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text, laterality):
+    sitelocation = ""
+    if laterality:
+        sitelocation=f'''
+                        <coding>
+                            <system value="https://www.cancercoreeurope.eu/fhir/core/CodeSystem/SitelocationCS" />
+                            <code value="{laterality}" />
+                        </coding>'''
     diagnosis_text = ""
     if diagnosis_icdo3_text:
         diagnosis_text=f'''
@@ -72,9 +77,9 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
         bodysite=f'''
                     <bodySite>
                         <coding>
-                            <system value="http://hl7.org/fhir/sid/icd-O3-topography"/>
+                            <system value="urn:oid:2.16.840.1.113883.6.43.1"/>
                             <code value="{diagnosis_icdo3}"/>
-                        </coding>{diagnosis_text}
+                        </coding>{diagnosis_text}{sitelocation}
                     </bodySite>'''
     return (f'''
         <entry>
@@ -82,12 +87,9 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
             <resource>
                 <Condition>
                     <id value="{condition_id}"/>
-                    <meta>
-                        <profile value="https://simplifier.net/CCE/primarydiagnosis"/>
-                    </meta>
                     <code>
                         <coding>
-                            <system value="http://hl7.org/fhir/sid/icd-10"/>
+                            <system value="http://fhir.de/CodeSystem/bfarm/icd-10-gm"/>
                             <code value="{diagnosis_icd10}"/>
                         </coding>
                     </code>{bodysite}

@@ -3,7 +3,7 @@ import logging
 import re
 from datetime import date
 from hashlib import sha256
-
+import os
 PROFILE = os.getenv("FHIR_PROFILE", "pscc").lower()
 if PROFILE == "pscc":
     from transformationTemplates_pscc import (
@@ -60,9 +60,10 @@ def run_transformation(input_list):
             diagnosis_icdo3_text = diagnosis.get("topographyGroup")
             diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"),diagnosis.get("cancerDiagnosisDateDay"))
             condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
+            laterality = map_laterality(diagnosis.get("laterality"))
             if is_fhir_date(diagnosis_date) and is_icd10_code(diagnosis_icd10):
                 log.info(f'everything in condition present "{diagnosis_icd10}"')
-                bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text))
+                bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text,laterality))
             else:
                 log.error(f'Patient "{patient_identifier}" has incorrect Condition "{diagnosis_icdo3}" or diagnosis date "{diagnosis_date}" (topographyCode;cancerDiagnosisDateYear)')
                 raise ValueError(f'ERROR: Patient "{patient_identifier}" has incorrect Condition "{diagnosis_icdo3}" or diagnosis date "{diagnosis_date}" (topographyCode;cancerDiagnosisDateYear)')
@@ -170,6 +171,19 @@ def uicc_heuristic_stage(t, n, m):
     if t in ("T1","T0"): return "I"
 
     return "X"
+
+def map_laterality(value):
+    v = (value or "").strip().lower()
+    if not v:
+        return None
+    return {
+        "l": "L", "left": "L",
+        "r": "R", "right": "R",
+        "b": "B", "bilateral": "B",
+        "c": "C", "center": "C", "centerline": "C",
+        "n": "N", "not applicable": "N", "not-applicable": "N",
+        "u": "U", "unknown": "U",
+    }.get(v, "U")
 
 # temporary function to harmonize different OSIRIS RWD formats
 def pick(d: dict, *keys, default=None):
