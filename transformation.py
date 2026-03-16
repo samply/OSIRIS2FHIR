@@ -69,9 +69,9 @@ def run_transformation(input_list):
             tnms = diagnosis.get("tnmEvent") or {}
             for tnm in tnms:
                 tnm_prefix = tnm.get("tnmType")
-                tnm_t = tnm.get("tValue")
-                tnm_n = tnm.get("nValue")
-                tnm_m = tnm.get("mValue")
+                tnm_t = pick(tnm, "tValue", "t", "T")
+                tnm_n = pick(tnm, "nValue", "n", "N")
+                tnm_m = pick(tnm, "mValue", "m", "M")
                 uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)
                 obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
                 bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
@@ -159,3 +159,11 @@ def uicc_heuristic_stage(t, n, m):
     if t in ("T1","T0"): return "I"
 
     return "X"
+
+# temporary function to harmonize different OSIRIS RWD formats
+def pick(d: dict, *keys, default=None):
+    for k in keys:
+        v = d.get(k)
+        if v not in (None, "", []):
+            return v
+    return default
