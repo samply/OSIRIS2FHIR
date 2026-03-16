@@ -8,6 +8,7 @@ from transformationTemplates import get_Patient, get_Observation_Vitalstatus, ge
 log = logging.getLogger(__name__)
 FHIR_DATE_RE = re.compile(r"\d{4}(-\d{2}(-\d{2})?)?$")
 ICD10_RE = re.compile(r"[CD]\d{2}(\.\d)?$")
+ICDO3_MORPH_RE = re.compile(r"^\d{4}/\d$")
 
 def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
@@ -34,7 +35,7 @@ def run_transformation(input_list):
             vitalstatus_date = latest_date_helper(latest_news)
             bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))
         else:
-            log.warn(f"Patient {patient_identifier} has no vitalstatus information (vitalStatus)")
+            log.warn(f'Patient "{patient_identifier}" has no vitalstatus information (vitalStatus)')
 
 
 
@@ -49,20 +50,20 @@ def run_transformation(input_list):
             diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"),diagnosis.get("cancerDiagnosisDateDay"))
             condition_id = hash_value(str(patient_id)+str(diagnosis_date)+str(diagnosis_icd10))
             if is_fhir_date(diagnosis_date) and is_icd10_code(diagnosis_icd10):
-                log.info(f"everything in condition present {diagnosis_icd10}")
+                log.info(f'everything in condition present "{diagnosis_icd10}"')
                 bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text))
             else:
-                log.error(f"Patient {patient_identifier} has incorrect Condition {diagnosis_icdo3} or diagnosis date {diagnosis_date} (topographyCode;cancerDiagnosisDateYear)")
-                raise ValueError(f"ERROR: Patient {patient_identifier} has incorrect Condition {diagnosis_icdo3} or diagnosis date {diagnosis_date} (topographyCode;cancerDiagnosisDateYear)")
+                log.error(f'Patient "{patient_identifier}" has incorrect Condition "{diagnosis_icdo3}" or diagnosis date "{diagnosis_date}" (topographyCode;cancerDiagnosisDateYear)')
+                raise ValueError(f'ERROR: Patient "{patient_identifier}" has incorrect Condition "{diagnosis_icdo3}" or diagnosis date "{diagnosis_date}" (topographyCode;cancerDiagnosisDateYear)')
 
 
             ###Histology
             histology_value = diagnosis.get("morphologyCode")
             obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
-            if histology_value != "":
+            if is_icdo3_morphology(histology_value):
                 bundle.append(get_Observation_Histology(obs_id,patient_id,diagnosis_date,histology_value))
             else:
-                log.warn(f"Patient {patient_identifier} has no Histology information (morphologyCode)")
+                log.warn(f'Patient "{patient_identifier}" has incorrect Histology "{histology_value}" (morphologyCode)')
 
             ###TNM / UICC
             tnms = diagnosis.get("tnmEvent") or {}
@@ -100,6 +101,9 @@ def is_fhir_date(value: str) -> bool:
 
 def is_icd10_code(value: str) -> bool:
     return bool(value) and bool(ICD10_RE.fullmatch(value))
+
+def is_icdo3_morphology(value: str) -> bool:
+    return bool(value) and bool(ICDO3_MORPH_RE.fullmatch(value))
 
 def get_valid_date(year=None, month=None, day=None):
     year = f"{int(year):04d}" if year not in (None, "") else None
