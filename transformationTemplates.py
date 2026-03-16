@@ -147,7 +147,7 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tn
         uicc = f'''
                     <valueCodeableConcept>
                         <coding>
-                            <system value="https://simplifier.net/PSCC/tnmstagevs"/>
+                            <system value="https://simplifier.net/PSCC/UiccstageCS"/>
                             <code value="{uicc_stage}"/>
                         </coding>
                     </valueCodeableConcept>'''
@@ -166,10 +166,10 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tn
     m=tnm_helper(tnm_m, prefix, "21907-1")
     return (f'''
         <entry>
-            <fullUrl value="PSCC/Observation/{obs_id}-tnm"/>
+            <fullUrl value="PSCC/Observation/{obs_id}"/>
             <resource>
                 <Observation>
-                    <id value="{obs_id}-tnm"/>
+                    <id value="{obs_id}"/>
                     <meta>
                         <profile value="https://simplifier.net/PSCC/TNMStage"/>
                     </meta>
@@ -189,7 +189,7 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tn
             </resource>
             <request>
                 <method value="PUT"/>
-                <url value="Observation/{obs_id}-tnm"/>
+                <url value="Observation/{obs_id}"/>
             </request>
         </entry>'''
     )
@@ -417,7 +417,8 @@ def period_helper(start_in, end_in):
 def tnm_helper(tnm_in, prefix, loinc):
     tnm=""
     if tnm_in:
-        tnm=f'''<component>{prefix}
+        tnm=f'''
+                    <component>{prefix}
                         <code>
                             <coding>
                                 <system value="http://loinc.org" />
