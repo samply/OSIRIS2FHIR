@@ -12,7 +12,7 @@ if PROFILE == "pscc":
     )
 elif PROFILE == "cce":
     from transformationTemplates_cce import (
-        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC
+        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
     )
 else:
     raise ValueError(f"unknown FHIR_PROFILE: {PROFILE}")
@@ -115,21 +115,21 @@ def run_transformation(input_list):
                 uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)
                 obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
                 bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
-                log.debug('done')
             
-        #Biomarker TODO
+        #Biomarker
         #markers = diagnosis.get("tnmEvent") or {}
 
         #Medication
-        #medications = input.get("medication") or {}
-        #for medication in medications:
-            #atc_code = medication.get("moleculeCode")
-            #atc_text = medication.get("moleculeName")
-            #med_therapy = map_atc_to_therapy(atc_code)
-            #med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"))
-            #med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth")) # TODO missing elements in GR
-            #med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
-            #bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
+        log.debug('creating SYST MedicationStatement')
+        medications = input.get("medication") or {}
+        for medication in medications:
+            atc_code = medication.get("moleculeCode")
+            atc_text = medication.get("moleculeName")
+            med_therapy = map_atc_to_therapy(atc_code)
+            med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"),medication.get("moleculeDateDay"))
+            med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth"),medication.get("moleculeEndDateDay"))
+            med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
+            bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
     
     bundle.append("</Bundle>")
     return '\n'.join(bundle)

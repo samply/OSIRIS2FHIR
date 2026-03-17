@@ -284,6 +284,7 @@ def get_Observation_Gene_Marker(obs_id,patient_id,specimen_id,mutation_type,gene
     )
 
 def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end):
+    log.debug(f'get_MedicationStatement with parameters: med_id={med_id},patient_id={patient_id},condition_id={condition_id},atc_code={atc_code},atc_text={atc_text},med_therapy={med_therapy},med_date={med_date},med_date_end={med_date_end}')
     period = period_helper(med_date, med_date_end)
     condition = ""
     if condition_id:
@@ -311,7 +312,7 @@ def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med
                     <id value="{med_id}"/>
                     <category>
                         <coding>
-                            <system value="http://CCE.org/fhir/therapy"/>
+                            <system value="https://www.cancercoreeurope.eu/fhir/core/CodeSystem/SYSTTherapyTypeCS"/>
                             <code value="{med_therapy}"/>
                         </coding>
                     </category>{atc}
