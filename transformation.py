@@ -20,6 +20,29 @@ log = logging.getLogger(__name__)
 FHIR_DATE_RE = re.compile(r"\d{4}(-\d{2}(-\d{2})?)?$")
 ICD10_RE = re.compile(r"[CD]\d{2}(\.\d)?$")
 ICDO3_MORPH_RE = re.compile(r"^\d{4}/\d$")
+TNM_ALLOWED = {
+    "t": {
+        "0",
+        "1","1a","1a1","1a2","1b","1b1","1b2","1c","1c1","1c2","1c3","1d","1mi",
+        "2","2a","2a1","2a2","2b","2c","2d",
+        "3","3a","3b","3c","3d",
+        "4","4a","4b","4c","4d","4e",
+        "a",
+        "is","is(DCIS)","is(LCIS)","is(Paget)","is(pd)","is(pu)",
+        "X",
+    },
+    "n": {
+        "0","0(i-)","0(i+)","0(mol-)","0(mol+)",
+        "1","1a","1b","1c","1mi",
+        "2","2a","2b","2c",
+        "3","3a","3b","3c",
+        "X",
+    },
+    "m": {
+        "0","1","1a","1b","1c","1d","1e",
+        "0(i-)","0(i+)","0(mol-)","0(mol+)",
+    },
+}
 
 def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
@@ -37,6 +60,7 @@ def run_transformation(input_list):
         bundle.append(get_Patient(patient_id,patient_identifier,birth_date,biologicalSex))
 
         ###Vitalstatus
+        log.debug('creating vitalstatus Observation')
         latest_news = input.get("latestNews") or {}
         vitalstatus = (latest_news.get("vitalStatus") or "").strip().lower()
         if vitalstatus in ("alive", "dead", "deceased"):
@@ -55,6 +79,7 @@ def run_transformation(input_list):
         #iterate through all conditions
         condition_id="" #TODO find a way to link other children to condition
         for diagnosis in diagnoses:
+            log.debug('creating diagnosis Condition')
             diagnosis_icdo3 = diagnosis.get("topographyCode")
             diagnosis_icd10 = diagnosis_icdo3 #TODO replace in next iteration
             diagnosis_icdo3_text = diagnosis.get("topographyGroup")
@@ -70,6 +95,7 @@ def run_transformation(input_list):
 
 
             ###Histology
+            log.debug('creating histology Observation')
             histology_value = diagnosis.get("morphologyCode")
             obs_id = hash_value(str(patient_id)+str(condition_id)+str(histology_value))
             if is_icdo3_morphology(histology_value):
@@ -78,15 +104,17 @@ def run_transformation(input_list):
                 log.warn(f'Patient "{patient_identifier}" has incorrect Histology "{histology_value}" (morphologyCode)')
 
             ###TNM / UICC
+            log.debug('creating TNM Observation')
             tnms = diagnosis.get("tnmEvent") or {}
             for tnm in tnms:
                 tnm_prefix = tnm.get("tnmType")
-                tnm_t = pick(tnm, "tValue", "t", "T")
-                tnm_n = pick(tnm, "nValue", "n", "N")
-                tnm_m = pick(tnm, "mValue", "m", "M")
+                tnm_t = map_tnm(pick(tnm, "tValue", "t", "T"), "t")
+                tnm_n = map_tnm(pick(tnm, "nValue", "n", "N"), "n")
+                tnm_m = map_tnm(pick(tnm, "mValue", "m", "M"), "m")
                 uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)
                 obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
                 bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
+                log.debug('done')
             
         #Biomarker TODO
         #markers = diagnosis.get("tnmEvent") or {}
@@ -156,21 +184,12 @@ def map_atc_to_therapy(atc):
     return "SO"
 
 def uicc_heuristic_stage(t, n, m):
-    t=(t or "").upper(); n=(n or "").upper(); m=(m or "").upper()
-
-    if m in ("M1","M1A","M1B","M1C"): return "IV"
-    if "X" in (t+n+m) or not (t and n and m): return "X"
-
-    if t in ("TIS",): return "0"
-
-    if n in ("N3","N2"): return "III"
-    if n == "N1": return "III" if t in ("T3","T4") else "II"
-
-    if t in ("T4","T3"): return "II"
-    if t in ("T2",): return "II"
-    if t in ("T1","T0"): return "I"
-
-    return "X"
+    if not (t and n and m) or "X" in (t, n, m): return "X"
+    if m[0] == "1": return "IV"
+    if t.startswith("is"): return "0"
+    if n[0] in "23": return "III"
+    if n[0] == "1": return "III" if t[0] in "34" else "II"
+    return "II" if t[0] in "234" else "I" if t[0] in "01" else "X"
 
 def map_laterality(value):
     v = (value or "").strip().lower()
@@ -184,6 +203,22 @@ def map_laterality(value):
         "n": "N", "not applicable": "N", "not-applicable": "N",
         "u": "U", "unknown": "U",
     }.get(v, "U")
+
+def map_tnm(value, kind):
+    v = (value or "").strip()
+    if not v:
+        return None
+    # "T1a" -> "1a"
+    if v[:1].upper() in "TNM":
+        v = v[1:].strip()
+
+    allowed = TNM_ALLOWED.get((kind or "").strip().lower())
+    if allowed and v in allowed:
+        log.debug(f'TNM value "{value}" has been set to "{v}"')
+        return v
+    else:
+        log.warn(f'TNM value "{value}" has been set to "X"')
+        return "X"
 
 # temporary function to harmonize different OSIRIS RWD formats
 def pick(d: dict, *keys, default=None):

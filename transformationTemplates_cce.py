@@ -1,3 +1,6 @@
+import logging
+log = logging.getLogger(__name__)
+
 def get_Patient(patient_id,patient_identifier,birth_date,biologicalSex):
     return (f'''
         <entry>
@@ -61,6 +64,7 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
     )
 
 def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text, laterality):
+    log.debug(f'get_Condition with parameters: condition_id={condition_id},diagnosis_icd10={diagnosis_icd10},diagnosis_icdo3={diagnosis_icdo3},patient_id={patient_id},diagnosis_date={diagnosis_date},diagnosis_icdo3_text={diagnosis_icdo3_text}, laterality={laterality}')
     sitelocation = ""
     if laterality:
         sitelocation=f'''
@@ -142,13 +146,14 @@ def get_Observation_Histology(obs_id,patient_id,condition_id,histology_date,hist
         </entry>''')
 
 def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m):
+    log.debug(f'get_Observation_UICC with parameters: obs_id={obs_id},patient_id={patient_id},condition_id={condition_id},uicc_stage={uicc_stage},tnm_prefix={tnm_prefix},tnm_t={tnm_t},tnm_n={tnm_n},tnm_m={tnm_m}')
     date = ""#date_helper(tnm_date)
     uicc = ""
     if uicc_stage:
         uicc = f'''
                     <valueCodeableConcept>
                         <coding>
-                            <system value="https://simplifier.net/CCE/UiccstageCS"/>
+                            <system value="https://www.cancercoreeurope.eu/fhir/core/CodeSystem/UICCStageCS"/>
                             <code value="{uicc_stage}"/>
                         </coding>
                     </valueCodeableConcept>'''
@@ -162,18 +167,16 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tn
                                 </coding>
                             </valueCodeableConcept>
                         </extension>'''
-    t=tnm_helper(tnm_t, prefix, "21905-5")
-    n=tnm_helper(tnm_n, prefix, "201906-3")
-    m=tnm_helper(tnm_m, prefix, "21907-1")
+    t=tnm_helper(tnm_t, prefix, "21905-5", "t")
+    n=tnm_helper(tnm_n, prefix, "201906-3", "n")
+    m=tnm_helper(tnm_m, prefix, "21907-1", "m")
     return (f'''
         <entry>
             <fullUrl value="CCE/Observation/{obs_id}"/>
             <resource>
                 <Observation>
                     <id value="{obs_id}"/>
-                    <meta>
-                        <profile value="https://simplifier.net/CCE/TNMStage"/>
-                    </meta>
+                    <status value="final" />
                     <code>
                         <coding>
                             <system value="http://loinc.org"/>
@@ -415,7 +418,7 @@ def period_helper(start_in, end_in):
                     </effectivePeriod>'''
     return start_end
 
-def tnm_helper(tnm_in, prefix, loinc):
+def tnm_helper(tnm_in, prefix, loinc, tnmLetter):
     tnm=""
     if tnm_in:
         tnm=f'''
@@ -428,7 +431,7 @@ def tnm_helper(tnm_in, prefix, loinc):
                         </code>
                         <valueCodeableConcept>
                             <coding>
-                                <system value="http://CCE.org/fhir/CodeSystem/TNMTCS" />
+                                <system value="http://CCE.org/fhir/CodeSystem/TNM{tnmLetter.upper()}CS" />
                                 <code value="{tnm_in}" />
                             </coding>
                         </valueCodeableConcept>
