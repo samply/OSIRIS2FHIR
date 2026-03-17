@@ -12,38 +12,16 @@ if PROFILE == "pscc":
     )
 elif PROFILE == "cce":
     from transformationTemplates_cce import (
-        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
+        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement, get_Specimen
     )
 else:
     raise ValueError(f"unknown FHIR_PROFILE: {PROFILE}")
+from constants import TNM_ALLOWED, SPECIMEN_MAP
 
 log = logging.getLogger(__name__)
 FHIR_DATE_RE = re.compile(r"\d{4}(-\d{2}(-\d{2})?)?$")
 ICD10_RE = re.compile(r"[CD]\d{2}(\.\d)?$")
 ICDO3_MORPH_RE = re.compile(r"^\d{4}/\d$")
-TNM_ALLOWED = {
-    "t": {
-        "0",
-        "1","1a","1a1","1a2","1b","1b1","1b2","1c","1c1","1c2","1c3","1d","1mi",
-        "2","2a","2a1","2a2","2b","2c","2d",
-        "3","3a","3b","3c","3d",
-        "4","4a","4b","4c","4d","4e",
-        "a",
-        "is","is(DCIS)","is(LCIS)","is(Paget)","is(pd)","is(pu)",
-        "X",
-    },
-    "n": {
-        "0","0(i-)","0(i+)","0(mol-)","0(mol+)",
-        "1","1a","1b","1c","1mi",
-        "2","2a","2b","2c",
-        "3","3a","3b","3c",
-        "X",
-    },
-    "m": {
-        "0","1","1a","1b","1c","1d","1e",
-        "0(i-)","0(i+)","0(mol-)","0(mol+)",
-    },
-}
 
 def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
@@ -118,6 +96,17 @@ def run_transformation(input_list):
             
         #Biomarker
         #markers = diagnosis.get("tnmEvent") or {}
+
+        #Specimen
+        log.debug('creating Specimen')
+        specimina  = input.get("biologicalSpecimen") or {}
+        for specimen in specimina:
+            specimen_type = map_specimen_type(specimen.get("specimenType"),specimen.get("specimenNature"))
+            specimen_date = get_valid_date(specimen.get("biologicalSpecimenCollectDateYear"),specimen.get("biologicalSpecimenCollectDateMonth"),specimen.get("biologicalSpecimenCollectDateDay"))
+            specimen_id = hash_value(str(patient_id)+str(specimen_type)+str(specimen_date))
+            bundle.append(get_Specimen(specimen_id,patient_id,specimen_type,specimen_date))
+
+
 
         #Medication
         log.debug('creating SYST MedicationStatement')
@@ -227,4 +216,11 @@ def pick(d: dict, *keys, default=None):
         v = d.get(k)
         if v not in (None, "", []):
             return v
+    return default
+
+def map_specimen_type(specimen_type=None, specimen_nature=None, default="derivative-other"):
+    text = f"{specimen_type or ''} {specimen_nature or ''}".lower()
+    for code, keywords in SPECIMEN_MAP:
+        if any(n in text for n in keywords):
+            return code
     return default

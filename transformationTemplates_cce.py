@@ -365,27 +365,27 @@ def get_Observation_Satellite(satellite_id,patient_id,specimen_date,specimen_id,
     )
 
 def get_Specimen(specimen_id,patient_id,specimen_type,specimen_date):
+    date = ""
+    if specimen_date:
+        date = f'''
+                    <collection>
+                        <collectedDateTime value="{specimen_date}"/>
+                    </collection>'''
     return (f'''
         <entry>
             <fullUrl value="CCE/Specimen/{specimen_id}"/>
             <resource>
                 <Specimen>
                     <id value="{specimen_id}"/>
-                    <meta>
-                        <profile value="TODO-simplifier"/>
-                    </meta>
                     <subject>
                         <reference value="Patient/{patient_id}"/>
                     </subject>
                     <type>
                         <coding>
-                            <system value="https://CCE.org/fhir/CodeSystem/SampleMaterialType"/>
+                            <system value="https://www.cancercoreeurope.eu/fhir/core/CodeSystem/SampleMaterialType"/>
                             <code value="{specimen_type}"/>
                         </coding>
-                    </type>
-                    <collection>
-                        <collectedDateTime value="{specimen_date}"/>
-                    </collection>
+                    </type>{date}
                 </Specimen>
             </resource>
             <request>
