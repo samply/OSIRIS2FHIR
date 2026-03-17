@@ -4,6 +4,7 @@ import re
 from datetime import date
 from hashlib import sha256
 import os
+SALT = os.getenv("SALT", "")
 PROFILE = os.getenv("FHIR_PROFILE", "pscc").lower()
 if PROFILE == "pscc":
     from transformationTemplates_pscc import (
@@ -134,7 +135,7 @@ def run_transformation(input_list):
     return '\n'.join(bundle)
 
 def hash_value(value):
-    return sha256(value.encode('utf-8')).hexdigest()[:15]
+    return sha256(f'{value}{SALT}'.encode('utf-8')).hexdigest()[:15]
 
 def is_fhir_date(value: str) -> bool:
     return bool(value) and bool(FHIR_DATE_RE.fullmatch(value))

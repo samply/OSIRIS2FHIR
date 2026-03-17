@@ -6,6 +6,7 @@ services:
     environment:
       FHIR_PROFILE: ${PROJECT:-pscc}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SALT: ${LOCAL_SALT:-replaceMe}
   blaze:
     image: docker.verbis.dkfz.de/cache/samply/blaze
     environment:
