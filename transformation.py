@@ -43,11 +43,12 @@ def run_transformation(input_list):
         log.debug('creating vitalstatus Observation')
         latest_news = input.get("latestNews") or {}
         vitalstatus = (latest_news.get("vitalStatus") or "").strip().lower()
+        vitalstatus_date = latest_date_helper(latest_news)
+        if not vitalstatus and get_valid_date(latest_news.get("deathDateYear")):vitalstatus = "deceased"
+        if not vitalstatus and vitalstatus_date: vitalstatus = "alive"
         if vitalstatus in ("alive", "dead", "deceased"):
             vitalstatus_value = "deceased" if vitalstatus != "alive" else "alive"
             obs_id=hash_value(patient_id)
-            vitalstatus_value = "deceased" if latest_news.get("vitalStatus")=="Dead" else "alive"
-            vitalstatus_date = latest_date_helper(latest_news)
             bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))
         else:
             log.warn(f'Patient "{patient_identifier}" has no vitalstatus information (vitalStatus)')
