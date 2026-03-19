@@ -12,7 +12,7 @@ if PROFILE == "pscc":
     )
 elif PROFILE == "cce":
     from transformationTemplates_cce import (
-        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement, get_Specimen
+        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement, get_Specimen, get_Procedure
     )
 else:
     raise ValueError(f"unknown FHIR_PROFILE: {PROFILE}")
@@ -93,7 +93,20 @@ def run_transformation(input_list):
                 uicc_stage = uicc_heuristic_stage(tnm_t, tnm_n, tnm_m)
                 obs_id=hash_value(str(patient_id)+str(condition_id)+str(uicc_stage)+str(tnm_t)+str(tnm_n)+str(tnm_m))
                 bundle.append(get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m))
-            
+
+            #Surgery
+            log.debug('creating Surgery Procedure')
+            surgeries = diagnosis.get("surgery") or []
+            for surgery in surgeries:
+                prod_start = get_valid_date(surgery.get("surgeryDateYear"),surgery.get("surgeryDateMonth"),surgery.get("surgeryDateDay"))
+                prod_end = "" #TODO
+                if prod_start:
+                    log.debug('test3')
+                    prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start))
+                    bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end))
+                else:
+                    log.warn(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDate)')
+
         #Biomarker
         #markers = diagnosis.get("tnmEvent") or {}
 
@@ -119,9 +132,25 @@ def run_transformation(input_list):
             med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth"),medication.get("moleculeEndDateDay"))
             med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
             bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
+
+        #Surgery
+        log.debug('creating Surgery Procedure (outer loop)')
+        procedures = input.get("surgery") or []
+        for procedure in procedures:
+            prod_start = get_valid_date(procedure.get("surgeryDateYear"),procedure.get("surgeryDateMonth"),procedure.get("surgeryDateDay"))
+            prod_end = "" #TODO
+            if prod_start:
+                prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start))
+                bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end))
+            else:
+                log.warn(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDateYear)')
+
+            
     
     bundle.append("</Bundle>")
     return '\n'.join(bundle)
+
+
 
 def hash_value(value):
     return sha256(f'{value}{SALT}'.encode('utf-8')).hexdigest()[:15]
@@ -136,6 +165,7 @@ def is_icdo3_morphology(value: str) -> bool:
     return bool(value) and bool(ICDO3_MORPH_RE.fullmatch(value))
 
 def get_valid_date(year=None, month=None, day=None):
+    log.debug(f"year {year}, month {month}, day {day}")
     year = f"{int(year):04d}" if year not in (None, "") else None
     return None if year is None else year + (f"-{int(month):02d}" if month not in (None, "") else "") + (f"-{int(day):02d}" if month not in (None, "") and day not in (None, "") else "")
 

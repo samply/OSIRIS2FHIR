@@ -285,7 +285,7 @@ def get_Observation_Gene_Marker(obs_id,patient_id,specimen_id,mutation_type,gene
 
 def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end):
     log.debug(f'get_MedicationStatement with parameters: med_id={med_id},patient_id={patient_id},condition_id={condition_id},atc_code={atc_code},atc_text={atc_text},med_therapy={med_therapy},med_date={med_date},med_date_end={med_date_end}')
-    period = period_helper(med_date, med_date_end)
+    period = period_helper(med_date, med_date_end, "MedicationStatement")
     condition = ""
     if condition_id:
         condition = f'''
@@ -324,6 +324,38 @@ def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med
             <request>
                 <method value="PUT"/>
                 <url value="MedicationStatement/{med_id}"/>
+            </request>
+        </entry>'''
+    )
+
+def get_Procedure(prod_type,prod_id,patient_id,condition_id,prod_start,prod_end):
+    log.debug(f'get_Procedure with parameters: prod_type={prod_type},prod_id={prod_id},patient_id={patient_id},condition_id={condition_id},prod_start={prod_start},prod_end={prod_end}')
+    if prod_type not in {"OP", "RT"}:
+        raise ValueError(f'Procedure type "{prod_type}" must be OP or RT')
+    period = period_helper(prod_start, prod_end, "Procedure")
+    return (f'''
+        <entry>
+            <fullUrl value="https://www.cancercoreeurope.eu/fhir-xml/examples/{prod_id}"/>
+            <resource>
+                <Procedure>
+                    <id value="{prod_id}" />
+                    <category>
+                        <coding>
+                            <system value="https://www.cancercoreeurope.eu/fhir/core/CodeSystem/SYSTTherapyTypeCS" />
+                            <code value="{prod_type}" />
+                        </coding>
+                    </category>
+                    <subject>
+                        <reference value="Patient/{patient_id}" />
+                    </subject>{period}
+                    <reasonReference>
+                        <reference value="Condition/{condition_id}" />
+                    </reasonReference>
+                </Procedure>
+            </resource>
+            <request>
+                <method value="PUT" />
+                <url value="Procedure/{prod_id}" />
             </request>
         </entry>'''
     )
@@ -404,20 +436,20 @@ def date_helper(date_in):
                     <effectiveDateTime value="{date_in}"/>'''
     return date
 
-def period_helper(start_in, end_in):
-    start=""
-    if start_in:
-        start=f'<start value="{start_in}"/>'
-    end=""
-    if end_in:
-        end=f'<end value="{end_in}"/>'
-    start_end=""
-    if start or end:
-        start_end=f'''
-                    <effectivePeriod>
-                        {start}{end}
-                    </effectivePeriod>'''
-    return start_end
+def period_helper(start_in, end_in, resource_type):
+    log.info("test1")
+    if not (start_in or end_in):
+        return ""
+    tag = {"MedicationStatement": "effectivePeriod", "Procedure": "performedPeriod"}.get(resource_type)
+    if not tag:
+        raise ValueError(f"unsupported resource_type: {resource_type}")
+    start = f'''
+                        <start value="{start_in}"/>''' if start_in else ""
+    end = f'''
+                        <end value="{end_in}"/>''' if end_in else ""
+    return f'''
+                    <{tag}>{start}{end}
+                    </{tag}>'''
 
 def tnm_helper(tnm_in, prefix, loinc, tnmLetter):
     tnm=""
