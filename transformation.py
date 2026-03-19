@@ -27,6 +27,7 @@ def run_transformation(input_list):
     bundle_id = str(uuid.uuid4())
     bundle=[f'<Bundle xmlns="http://hl7.org/fhir">\n\t<id value="{bundle_id}"/>\n\t<type value="batch"/>']
     counter=0
+    duplicate = set()
     for input in input_list:
         counter+=1
         log.info(f"transforming Patient {counter} to fhir bundle")
@@ -102,11 +103,24 @@ def run_transformation(input_list):
                 prod_end = "" #TODO
                 if prod_start:
                     log.debug('test3')
-                    prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start))
-                    bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end))
+                    prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"OP")
+                    bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate surgery')
+                    duplicate.add(prod_id)
                 else:
                     log.warn(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDate)')
 
+            #Radiotherapy
+            log.debug('creating Radiotherapy Procedure')
+            radiotherapies = diagnosis.get("radiotherapy") or []
+            for radiotherapy in radiotherapies:
+                prod_start = get_valid_date(radiotherapy.get("radiationDateYear"),radiotherapy.get("radiationDateMonth"),radiotherapy.get("radiationDateDay"))
+                prod_end = "" #TODO
+                if prod_start:
+                    prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"RT")
+                    bundle.append(get_Procedure("RT",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate radiotherapy')
+                    duplicate.add(prod_id)
+                else:
+                    log.warn(f'Patient "{patient_id}" has incorrect Radiotherapy "{prod_start}" (radiationDate)')
         #Biomarker
         #markers = diagnosis.get("tnmEvent") or {}
 
@@ -140,10 +154,23 @@ def run_transformation(input_list):
             prod_start = get_valid_date(procedure.get("surgeryDateYear"),procedure.get("surgeryDateMonth"),procedure.get("surgeryDateDay"))
             prod_end = "" #TODO
             if prod_start:
-                prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start))
-                bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end))
+                prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"OP")
+                bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate surgery')
+                duplicate.add(prod_id)
             else:
                 log.warn(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDateYear)')
+        #Radiotherapy
+        log.debug('creating Radiotherapy Procedure (outer loop)')
+        radiotherapies = input.get("radiotherapy") or []
+        for radiotherapy in radiotherapies:
+            prod_start = get_valid_date(radiotherapy.get("radiationDateYear"),radiotherapy.get("radiationDateMonth"),radiotherapy.get("radiationDateDay"))
+            prod_end = "" #TODO
+            if prod_start:
+                prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"RT")
+                bundle.append(get_Procedure("RT",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate radiotherapy')
+                duplicate.add(prod_id)
+            else:
+                log.warn(f'Patient "{patient_id}" has incorrect Radiotherapy "{prod_start}" (radiationDate)')
 
             
     
