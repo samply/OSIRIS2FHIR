@@ -1,0 +1,46 @@
+TNM_ALLOWED = {
+    "t": {
+        "0",
+        "1","1a","1a1","1a2","1b","1b1","1b2","1c","1c1","1c2","1c3","1d","1mi",
+        "2","2a","2a1","2a2","2b","2c","2d",
+        "3","3a","3b","3c","3d",
+        "4","4a","4b","4c","4d","4e",
+        "a",
+        "is","is(DCIS)","is(LCIS)","is(Paget)","is(pd)","is(pu)",
+        "X",
+    },
+    "n": {
+        "0","0(i-)","0(i+)","0(mol-)","0(mol+)",
+        "1","1a","1b","1c","1mi",
+        "2","2a","2b","2c",
+        "3","3a","3b","3c",
+        "X",
+    },
+    "m": {
+        "0","1","1a","1b","1c","1d","1e",
+        "0(i-)","0(i+)","0(mol-)","0(mol+)",
+    },
+}
+
+SPECIMEN_MAP = [
+    ("whole-blood", ["whole blood"]),
+    ("bone-marrow", ["bone marrow"]),
+    ("buffy-coat", ["buffy coat", "buffy-coat"]),
+    ("dried-whole-blood", ["dried whole blood"]),
+    ("peripheral-blood-cells-vital", ["pbmc", "peripheral blood mononuclear", "mononuclear cells"]),
+    ("blood-plasma", ["plasma"]),
+    ("blood-serum", ["serum"]),
+    ("ascites", ["ascites"]),
+    ("csf-liquor", ["csf", "liquor", "cerebrospinal"]),
+    ("saliva", ["saliva"]),
+    ("stool-faeces", ["stool", "faeces", "feces"]),
+    ("urine", ["urine"]),
+    ("swab", ["swab"]),
+    ("dna", ["dna"]),
+    ("rna", ["rna"]),
+    ("tissue-ffpe", ["ffpe", "paraffin", "formalin"]),
+    ("tissue-frozen", ["frozen", "cry", "snap frozen"]),
+    ("tissue-other", ["tissue", "biopsy", "tumor tissue", "normal tissue"]),
+    ("liquid-other", ["fluid", "liquid"]),
+    ("derivative-other", ["derivative", "extract"]),
+]
