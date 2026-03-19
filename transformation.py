@@ -51,7 +51,7 @@ def run_transformation(input_list):
             obs_id=hash_value(patient_id)
             bundle.append(get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_date))
         else:
-            log.warn(f'Patient "{patient_identifier}" has no vitalstatus information (vitalStatus)')
+            log.warning(f'Patient "{patient_identifier}" has no vitalstatus information (vitalStatus)')
 
 
 
@@ -82,7 +82,7 @@ def run_transformation(input_list):
             if is_icdo3_morphology(histology_value):
                 bundle.append(get_Observation_Histology(obs_id,patient_id,condition_id,diagnosis_date,histology_value))
             else:
-                log.warn(f'Patient "{patient_identifier}" has incorrect Histology "{histology_value}" (morphologyCode)')
+                log.warning(f'Patient "{patient_identifier}" has incorrect Histology "{histology_value}" (morphologyCode)')
 
             ###TNM / UICC
             log.debug('creating TNM Observation')
@@ -105,10 +105,10 @@ def run_transformation(input_list):
                 if prod_start:
                     log.debug('test3')
                     prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"OP")
-                    bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate surgery')
+                    bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warning(f'Patient "{patient_id}" has duplicate surgery')
                     duplicate.add(prod_id)
                 else:
-                    log.warn(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDate)')
+                    log.warning(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDate)')
 
             #Radiotherapy
             log.debug('creating Radiotherapy Procedure')
@@ -118,10 +118,10 @@ def run_transformation(input_list):
                 prod_end = "" #TODO
                 if prod_start:
                     prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"RT")
-                    bundle.append(get_Procedure("RT",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate radiotherapy')
+                    bundle.append(get_Procedure("RT",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warning(f'Patient "{patient_id}" has duplicate radiotherapy')
                     duplicate.add(prod_id)
                 else:
-                    log.warn(f'Patient "{patient_id}" has incorrect Radiotherapy "{prod_start}" (radiationDate)')
+                    log.warning(f'Patient "{patient_id}" has incorrect Radiotherapy "{prod_start}" (radiationDate)')
         #Biomarker
         #markers = diagnosis.get("tnmEvent") or {}
 
@@ -156,10 +156,10 @@ def run_transformation(input_list):
             prod_end = "" #TODO
             if prod_start:
                 prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"OP")
-                bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate surgery')
+                bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warning(f'Patient "{patient_id}" has duplicate surgery')
                 duplicate.add(prod_id)
             else:
-                log.warn(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDateYear)')
+                log.warning(f'Patient "{patient_id}" has incorrect Surgery "{prod_start}" (surgeryDateYear)')
         #Radiotherapy
         log.debug('creating Radiotherapy Procedure (outer loop)')
         radiotherapies = input.get("radiotherapy") or []
@@ -168,10 +168,10 @@ def run_transformation(input_list):
             prod_end = "" #TODO
             if prod_start:
                 prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"RT")
-                bundle.append(get_Procedure("RT",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warn(f'Patient "{patient_id}" has duplicate radiotherapy')
+                bundle.append(get_Procedure("RT",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warning(f'Patient "{patient_id}" has duplicate radiotherapy')
                 duplicate.add(prod_id)
             else:
-                log.warn(f'Patient "{patient_id}" has incorrect Radiotherapy "{prod_start}" (radiationDate)')
+                log.warning(f'Patient "{patient_id}" has incorrect Radiotherapy "{prod_start}" (radiationDate)')
 
             
     
@@ -265,7 +265,7 @@ def map_tnm(value, kind):
         log.debug(f'TNM value "{value}" has been set to "{v}"')
         return v
     else:
-        log.warn(f'TNM value "{value}" has been set to "X"')
+        log.warning(f'TNM value "{value}" has been set to "X"')
         return "X"
 
 # temporary function to harmonize different OSIRIS RWD formats
