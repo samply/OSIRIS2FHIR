@@ -437,7 +437,6 @@ def date_helper(date_in):
     return date
 
 def period_helper(start_in, end_in, resource_type):
-    log.info("test1")
     if not (start_in or end_in):
         return ""
     tag = {"MedicationStatement": "effectivePeriod", "Procedure": "performedPeriod"}.get(resource_type)

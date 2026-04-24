@@ -8,7 +8,7 @@ SALT = os.getenv("SALT", "")
 PROFILE = os.getenv("FHIR_PROFILE", "pscc").lower()
 if PROFILE == "pscc":
     from transformationTemplates_pscc import (
-        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement
+        get_Patient, get_Observation_Vitalstatus, get_Condition, get_Observation_Histology, get_Observation_UICC, get_MedicationStatement, get_Specimen, get_Procedure
     )
 elif PROFILE == "cce":
     from transformationTemplates_cce import (
@@ -69,7 +69,10 @@ def run_transformation(input_list):
             laterality = map_laterality(diagnosis.get("laterality"))
             if is_fhir_date(diagnosis_date) and is_icd10_code(diagnosis_icd10):
                 log.info(f'everything in condition present "{diagnosis_icd10}"')
-                bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text,laterality))
+                if PROFILE == "cce":
+                    bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text,laterality))
+                elif PROFILE == "pscc":
+                    bundle.append(get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text))
             else:
                 log.error(f'Patient "{patient_identifier}" has incorrect Condition "{diagnosis_icdo3}" or diagnosis date "{diagnosis_date}" (topographyCode;cancerDiagnosisDateYear)')
                 raise ValueError(f'ERROR: Patient "{patient_identifier}" has incorrect Condition "{diagnosis_icdo3}" or diagnosis date "{diagnosis_date}" (topographyCode;cancerDiagnosisDateYear)')
@@ -103,7 +106,6 @@ def run_transformation(input_list):
                 prod_start = get_valid_date(surgery.get("surgeryDateYear"),surgery.get("surgeryDateMonth"),surgery.get("surgeryDateDay"))
                 prod_end = "" #TODO
                 if prod_start:
-                    log.debug('test3')
                     prod_id=hash_value(str(patient_id)+str(condition_id)+str(prod_start)+"OP")
                     bundle.append(get_Procedure("OP",prod_id,patient_id,condition_id,prod_start,prod_end)) if not prod_id in duplicate else log.warning(f'Patient "{patient_id}" has duplicate surgery')
                     duplicate.add(prod_id)
@@ -141,10 +143,18 @@ def run_transformation(input_list):
         medications = input.get("medication") or {}
         for medication in medications:
             atc_code = medication.get("moleculeCode")
-            atc_text = medication.get("moleculeName")
+            atc_text = medication.get("moleculeName") or medication.get("drugAtcCode")
             med_therapy = map_atc_to_therapy(atc_code)
-            med_date = get_valid_date(medication.get("moleculeDateYear"),medication.get("moleculeDateMonth"),medication.get("moleculeDateDay"))
-            med_date_end = get_valid_date(medication.get("moleculeEndDateYear"),medication.get("moleculeEndDateMonth"),medication.get("moleculeEndDateDay"))
+            med_date = get_valid_date(
+                pick(medication, "moleculeDateYear", "startDateYear"),
+                pick(medication, "moleculeDateMonth", "startDateMonth"),
+                pick(medication, "moleculeDateDay", "startDateDay"),
+            )
+            med_date_end = get_valid_date(
+                pick(medication, "moleculeEndDateYear", "endDateYear"),
+                pick(medication, "moleculeEndDateMonth", "endDateMonth"),
+                pick(medication, "moleculeEndDateDay", "endDateDay"),
+            )
             med_id=hash_value(str(patient_id)+str(condition_id)+str(med_therapy)+str(med_date))
             bundle.append(get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end))
 
