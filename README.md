@@ -1,9 +1,6 @@
 # OSIRIS2FHIR
-```html
-<p align="center">
-  <img src="OSIRIS2FHIR_logo.svg" width="250"/>
-</p>
-```
+![Logo](OSIRIS2FHIR_logo.svg)
+
 
 This service accepts **OSIRIS RWD JSON**, transforms it into the **PSCC pilot FHIR profile**  
 (https://simplifier.net/pscc), and imports the generated resources into the **PSCC Bridgehead**.
