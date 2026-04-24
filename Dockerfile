@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /osiris2fhir
 
-RUN pip install fastapi uvicorn datetime
+RUN pip install fastapi uvicorn
 
 COPY *.py ./
 
