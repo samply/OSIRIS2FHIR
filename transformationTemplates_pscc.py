@@ -1,3 +1,6 @@
+import logging
+log = logging.getLogger(__name__)
+
 def get_Patient(patient_id,patient_identifier,birth_date,biologicalSex):
     return (f'''
         <entry>
@@ -35,9 +38,6 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
             <resource>
                 <Observation>
                     <id value="{obs_id}"/>
-                    <meta>
-                        <profile value="https://simplifier.net/PSCC/StructureDefinition-PSCC-VitalStatus"/>
-                    </meta>
                     <code>
                         <coding>
                             <system value="http://loinc.org"/>
@@ -63,6 +63,7 @@ def get_Observation_Vitalstatus(obs_id,patient_id,vitalstatus_value,vitalstatus_
     )
 
 def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagnosis_date,diagnosis_icdo3_text):
+    log.debug(f'get_Condition with parameters: condition_id={condition_id},diagnosis_icd10={diagnosis_icd10},diagnosis_icdo3={diagnosis_icdo3},patient_id={patient_id},diagnosis_date={diagnosis_date},diagnosis_icdo3_text={diagnosis_icdo3_text}')
     diagnosis_text = ""
     if diagnosis_icdo3_text:
         diagnosis_text=f'''
@@ -94,9 +95,7 @@ def get_Condition(condition_id,diagnosis_icd10,diagnosis_icdo3,patient_id,diagno
                     <subject>
                         <reference value="Patient/{patient_id}"/>
                     </subject>
-                    <onsetDateTime>
-                        <value value="{diagnosis_date}"/>
-                    </onsetDateTime>
+                    <onsetDateTime value="{diagnosis_date}"/>
                 </Condition>
             </resource>
             <request>
@@ -114,9 +113,7 @@ def get_Observation_Histology(obs_id,patient_id,condition_id,histology_date,hist
             <resource>
                 <Observation>
                     <id value="{obs_id}-histology"/>
-                    <meta>
-                        <profile value="https://simplifier.net/pscc/StructureDefinition/Histologie"/>
-                    </meta>
+                    <status value="final"/>
                     <code>
                         <coding>
                             <system value="http://loinc.org"/>
@@ -144,6 +141,7 @@ def get_Observation_Histology(obs_id,patient_id,condition_id,histology_date,hist
         </entry>''')
 
 def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tnm_t,tnm_n,tnm_m):
+    log.debug(f'get_Observation_UICC with parameters: obs_id={obs_id},patient_id={patient_id},condition_id={condition_id},uicc_stage={uicc_stage},tnm_prefix={tnm_prefix},tnm_t={tnm_t},tnm_n={tnm_n},tnm_m={tnm_m}')
     date = ""#date_helper(tnm_date)
     uicc = ""
     if uicc_stage:
@@ -164,18 +162,16 @@ def get_Observation_UICC(obs_id,patient_id,condition_id,uicc_stage,tnm_prefix,tn
                                 </coding>
                             </valueCodeableConcept>
                         </extension>'''
-    t=tnm_helper(tnm_t, prefix, "21905-5")
-    n=tnm_helper(tnm_n, prefix, "201906-3")
-    m=tnm_helper(tnm_m, prefix, "21907-1")
+    t=tnm_helper(tnm_t, prefix, "21905-5", "t")
+    n=tnm_helper(tnm_n, prefix, "201906-3", "n")
+    m=tnm_helper(tnm_m, prefix, "21907-1", "m")
     return (f'''
         <entry>
             <fullUrl value="PSCC/Observation/{obs_id}"/>
             <resource>
                 <Observation>
                     <id value="{obs_id}"/>
-                    <meta>
-                        <profile value="https://simplifier.net/PSCC/TNMStage"/>
-                    </meta>
+                    <status value="final" />
                     <code>
                         <coding>
                             <system value="http://loinc.org"/>
@@ -235,6 +231,7 @@ def get_Observation_Lab_Marker(obs_id,patient_id,specimen_id,biomarker,biomarker
     )
 
 def get_Observation_Gene_Marker(obs_id,patient_id,specimen_id,mutation_type,gene_name):
+    log.debug(f'get_MedicationStatement with parameters: med_id={med_id},patient_id={patient_id},condition_id={condition_id},atc_code={atc_code},atc_text={atc_text},med_therapy={med_therapy},med_date={med_date},med_date_end={med_date_end}')
     return (f'''
         <entry>
             <fullUrl value="PSCC/Observation/{obs_id}-gen"/>
@@ -283,7 +280,8 @@ def get_Observation_Gene_Marker(obs_id,patient_id,specimen_id,mutation_type,gene
     )
 
 def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med_therapy,med_date,med_date_end):
-    period = period_helper(med_date, med_date_end)
+    log.debug(f'get_MedicationStatement with parameters: med_id={med_id},patient_id={patient_id},condition_id={condition_id},atc_code={atc_code},atc_text={atc_text},med_therapy={med_therapy},med_date={med_date},med_date_end={med_date_end}')
+    period = period_helper(med_date, med_date_end, "MedicationStatement")
     condition = ""
     if condition_id:
         condition = f'''
@@ -326,6 +324,38 @@ def get_MedicationStatement(med_id,patient_id,condition_id,atc_code,atc_text,med
         </entry>'''
     )
 
+def get_Procedure(prod_type,prod_id,patient_id,condition_id,prod_start,prod_end):
+    log.debug(f'get_Procedure with parameters: prod_type={prod_type},prod_id={prod_id},patient_id={patient_id},condition_id={condition_id},prod_start={prod_start},prod_end={prod_end}')
+    if prod_type not in {"OP", "RT"}:
+        raise ValueError(f'Procedure type "{prod_type}" must be OP or RT')
+    period = period_helper(prod_start, prod_end, "Procedure")
+    return (f'''
+        <entry>
+            <fullUrl value="PSCC/Procedure/{prod_id}"/>
+            <resource>
+                <Procedure>
+                    <id value="{prod_id}" />
+                    <category>
+                        <coding>
+                            <system value="http://pscc.org/fhir/therapy"/>
+                            <code value="{prod_type}" />
+                        </coding>
+                    </category>
+                    <subject>
+                        <reference value="Patient/{patient_id}" />
+                    </subject>{period}
+                    <reasonReference>
+                        <reference value="Condition/{condition_id}" />
+                    </reasonReference>
+                </Procedure>
+            </resource>
+            <request>
+                <method value="PUT" />
+                <url value="Procedure/{prod_id}" />
+            </request>
+        </entry>'''
+    )
+
 def get_Observation_Satellite(satellite_id,patient_id,specimen_date,specimen_id,satellite_value):
     return (f'''
         <entry>
@@ -363,15 +393,18 @@ def get_Observation_Satellite(satellite_id,patient_id,specimen_date,specimen_id,
     )
 
 def get_Specimen(specimen_id,patient_id,specimen_type,specimen_date):
+    date = ""
+    if specimen_date:
+        date = f'''
+                    <collection>
+                        <collectedDateTime value="{specimen_date}"/>
+                    </collection>'''
     return (f'''
         <entry>
             <fullUrl value="PSCC/Specimen/{specimen_id}"/>
             <resource>
                 <Specimen>
                     <id value="{specimen_id}"/>
-                    <meta>
-                        <profile value="TODO-simplifier"/>
-                    </meta>
                     <subject>
                         <reference value="Patient/{patient_id}"/>
                     </subject>
@@ -380,10 +413,7 @@ def get_Specimen(specimen_id,patient_id,specimen_type,specimen_date):
                             <system value="https://pscc.org/fhir/CodeSystem/SampleMaterialType"/>
                             <code value="{specimen_type}"/>
                         </coding>
-                    </type>
-                    <collection>
-                        <collectedDateTime value="{specimen_date}"/>
-                    </collection>
+                    </type>{date}
                 </Specimen>
             </resource>
             <request>
@@ -402,22 +432,22 @@ def date_helper(date_in):
                     <effectiveDateTime value="{date_in}"/>'''
     return date
 
-def period_helper(start_in, end_in):
-    start=""
-    if start_in:
-        start=f'<start value="{start_in}"/>'
-    end=""
-    if end_in:
-        end=f'<end value="{end_in}"/>'
-    start_end=""
-    if start or end:
-        start_end=f'''
-                    <effectivePeriod>
-                        {start}{end}
-                    </effectivePeriod>'''
-    return start_end
+def period_helper(start_in, end_in, resource_type):
+    if not (start_in or end_in):
+        return ""
+    tag = {"MedicationStatement": "effectivePeriod", "Procedure": "performedPeriod"}.get(resource_type)
+    if not tag:
+        raise ValueError(f"unsupported resource_type: {resource_type}")
+    start = f'''
+                        <start value="{start_in}"/>''' if start_in else ""
+    end = f'''
+                        <end value="{end_in}"/>''' if end_in else ""
+    return f'''
+                    <{tag}>{start}{end}
+                    </{tag}>'''
 
-def tnm_helper(tnm_in, prefix, loinc):
+
+def tnm_helper(tnm_in, prefix, loinc, tnmLetter):
     tnm=""
     if tnm_in:
         tnm=f'''
@@ -430,7 +460,7 @@ def tnm_helper(tnm_in, prefix, loinc):
                         </code>
                         <valueCodeableConcept>
                             <coding>
-                                <system value="http://pscc.org/fhir/CodeSystem/TNMTCS" />
+                                <system value="http://pscc.org/fhir/CodeSystem/TNM{tnmLetter.upper()}CS" />
                                 <code value="{tnm_in}" />
                             </coding>
                         </valueCodeableConcept>
