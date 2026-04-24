@@ -3,6 +3,7 @@
 <p align="center">
   <img src="OSIRIS2FHIR_logo.svg" width="250"/>
 </p>
+```
 
 This service accepts **OSIRIS RWD JSON**, transforms it into the **PSCC pilot FHIR profile**  
 (https://simplifier.net/pscc), and imports the generated resources into the **PSCC Bridgehead**.
@@ -19,6 +20,7 @@ curl --location 'https://server/osiris2fhir/import' \
   --header 'Content-Type: application/json' \
   -u 'user:password' \
   --data '@/path/to/payload.json'
+```
 
 #### Input
 
