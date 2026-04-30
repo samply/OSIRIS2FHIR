@@ -1,0 +1,19 @@
+name: Docker CI
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: samply/github-workflows/.github/workflows/docker-ci.yml@main
+    with:
+      image-name: "samply/osiris2fhir"
+      push-to: docker.io
+      #build-context: '.'
+      #build-file: './Dockerfile'
+      #build-platforms: "linux/amd64"
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
