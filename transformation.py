@@ -62,6 +62,9 @@ def run_transformation(input_list):
         for diagnosis in diagnoses:
             log.debug('creating diagnosis Condition')
             diagnosis_icdo3 = diagnosis.get("topographyCode")
+            if diagnosis_icdo3 is None:
+                log.warn("Missing diagnosis value: skipping all downstream values")
+                continue
             diagnosis_icd10 = diagnosis_icdo3 #TODO replace in next iteration
             diagnosis_icdo3_text = diagnosis.get("topographyGroup")
             diagnosis_date = get_valid_date(diagnosis.get("cancerDiagnosisDateYear"),diagnosis.get("cancerDiagnosisDateMonth"),diagnosis.get("cancerDiagnosisDateDay"))
