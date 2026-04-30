@@ -10,7 +10,7 @@ jobs:
     uses: samply/github-workflows/.github/workflows/docker-ci.yml@main
     with:
       image-name: "samply/osiris2fhir"
-      push-to: dockerhub
+      push-to: docker.io
       #build-context: '.'
       #build-file: './Dockerfile'
       #build-platforms: "linux/amd64"
